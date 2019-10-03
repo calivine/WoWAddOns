@@ -1,0 +1,8 @@
+## Title: Threat Text (Classic)
+## Notes: Display party's threat status on screen. Visually similar to combat text. 
+## 
+## Interface: 11302
+##
+
+ThreatText.lua
+ThreatText.xml
