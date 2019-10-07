@@ -95,7 +95,7 @@ function AdvancedCombatText_OnUpdate(self, elapsed)
                 -- Check if spell has a countdown
                 local start, duration, enabled, modRate = GetSpellCooldown(value.var);
                 if enabled == 1 and duration > 2 then
-                    value.countdown = start + elapsed;
+                    value.countdown = start;
                     value.endTime = start + duration;
                     value.enabled = 1;
                     ADV_COMBAT_TEXT_COOLDOWN = 1;
@@ -136,7 +136,6 @@ function AdvancedCombatText_OnUpdate(self, elapsed)
         end
     end
     if ( (ADV_COMBAT_TEXT_Y_SCALE ~= WorldFrame:GetHeight() / 768) or (ADV_COMBAT_TEXT_X_SCALE ~= WorldFrame:GetWidth() / 1024) ) then
-        print("Updating...");
         AdvancedCombatText_UpdateDisplayedMessages();
     end
 end
