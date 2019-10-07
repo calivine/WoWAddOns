@@ -1,0 +1,38 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+	<Script file="AdvancedCombatText.lua"/>
+    <FontString name="AdvancedCombatTextTemplate" inherits="CombatTextFont" hidden="true" virtual="true">
+      <Anchors>
+        <Anchor point="TOP" relativeTo="WorldFrame" relativePoint="BOTTOM">
+          <Offset>
+            <AbsDimension x="96" y="384"/>
+          </Offset>
+        </Anchor>
+      </Anchors>
+    </FontString>
+	<Frame name="AdvancedCombatText" toplevel="true" parent="UIParent" hidden="false">
+    <Size>
+      <AbsDimension x="10" y="10"/>
+    </Size>
+    <Anchors>
+      <Anchor point="CENTER">
+        <Offset>
+          <AbsDimension x="0" y="0"/>
+        </Offset>
+      </Anchor>
+    </Anchors>
+    <Layers>
+      <Layer level="BACKGROUND">
+        <FontString name="AdvancedCombatText1" inherits="AdvancedCombatTextTemplate"/>
+        <FontString name="AdvancedCombatText2" inherits="AdvancedCombatTextTemplate"/>
+        <FontString name="AdvancedCombatText3" inherits="AdvancedCombatTextTemplate"/>
+        <FontString name="AdvancedCombatText4" inherits="AdvancedCombatTextTemplate"/>
+        <FontString name="AdvancedCombatText5" inherits="AdvancedCombatTextTemplate"/>
+      </Layer>
+    </Layers>
+		<Scripts>
+		  <OnLoad function="AdvancedCombatText_OnLoad"/>
+			<OnEvent function="AdvancedCombatText_OnEvent"/>
+      <OnUpdate function="AdvancedCombatText_OnUpdate"/>
+		</Scripts>
+	</Frame>
+</Ui>
