@@ -1,10 +1,3 @@
--- Variables to track time and damage
-local start_time = 0;
-local end_time = 0;
-local total_time = 0;
-local total_damage = 0;
-local average_damage = 0;
-
 function ThreatUI_OnLoad(self)
   ThreatUI_LoadPlayerNames();
 end
