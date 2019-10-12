@@ -13,9 +13,9 @@ ADV_COMBAT_TEXT_RANGEFINDER = 0;
 ADV_COMBAT_TEXT_COOLDOWN = 0;
 
 COOLDOWN_TEXT = {};
-COOLDOWN_TEXT["Fire Blast"] = {var = "Fire Blast", enabled = 0, countdown = nil, endTime = nil};
-COOLDOWN_TEXT["Blink"] = {var = "Blink", enabled = 0, countdown = nil, endTime = nil};
-COOLDOWN_TEXT["Frost Nova"] = {var = "Frost Nova", enabled = 0, countdown = nil, endTime = nil};
+COOLDOWN_TEXT["Fire Blast"] = {name = "Fire Blast", enabled = 0, countdown = nil, endTime = nil, r = 1, g = 0.1, b = 0.1};
+COOLDOWN_TEXT["Blink"] = {name = "Blink", enabled = 0, countdown = nil, endTime = nil, r = 0.1, g = 1, b = 0.1};
+COOLDOWN_TEXT["Frost Nova"] = {name = "Frost Nova", enabled = 0, countdown = nil, endTime = nil, r = 0.1, g = 0.1, b = 1};
 
 ADV_COMBAT_TEXT_TYPE_INFO = {};
 ADV_COMBAT_TEXT_TYPE_INFO["ENTERING_COMBAT"] = {r = 1, g = 0.1, b = 0.1, var = "COMBAT_TEXT_SHOW_COMBAT_STATE"};
@@ -36,13 +36,13 @@ function AdvancedCombatText_OnEvent(self, event, ...)
     local arg1, arg2, arg3, arg4 = ...;
     
     local messageType, message;
-    if event == "PLAYER_TARGET_CHANGED" then
+    if event == "UNIT_TARGET" then
         messageType = "RANGEFINDER";
         if ADV_COMBAT_TEXT_RANGEFINDER == 1 then
             ADV_COMBAT_TEXT_RANGEFINDER = 0;
         end
-    elseif event == "PLAYER_REGEN_DISABLED" then
-        messageType = "ENTERING_COMBAT";
+    --elseif event == "PLAYER_REGEN_DISABLED" then
+    --    messageType = "ENTERING_COMBAT";
     elseif event == "PLAYER_REGEN_ENABLED" then
         messageType = "LEAVING_COMBAT";
     elseif event == "UNIT_SPELLCAST_START" then
@@ -53,9 +53,9 @@ function AdvancedCombatText_OnEvent(self, event, ...)
         ADV_COMBAT_TEXT_COOLDOWN = 1;
     end
 
-    if messageType == "ENTERING_COMBAT" then
-        message = "PREPARE FOR ACTION";
-    elseif messageType == "LEAVING_COMBAT" then
+    --if messageType == "ENTERING_COMBAT" then
+    --    message = "PREPARE FOR ACTION";
+    if messageType == "LEAVING_COMBAT" then
         message = "LEAVING COMBAT";
     else
         message = "";
@@ -73,7 +73,8 @@ end
 function AdvancedCombatText_OnUpdate(self, elapsed)
     local lowestMessage = ADV_COMBAT_TEXT_LOCATIONS.startY;
     local alpha, xPos, yPos;
-    if not UnitAffectingCombat("player")  then
+
+    if not UnitAffectingCombat("player") then
         if UnitIsEnemy("player", "target") then
             local actionType, id, subType = GetActionInfo(1);
             if actionType == "spell" then
@@ -88,24 +89,24 @@ function AdvancedCombatText_OnUpdate(self, elapsed)
                 end
             end
         end
-    end
+    end 
+
     if ADV_COMBAT_TEXT_COOLDOWN == 1 then
         for index, value in pairs(COOLDOWN_TEXT) do
             if value.enabled == 0 then
                 -- Check if spell has a countdown
-                local start, duration, enabled, modRate = GetSpellCooldown(value.var);
+                local start, duration, enabled, modRate = GetSpellCooldown(value.name);
                 if enabled == 1 and duration > 2 then
                     value.countdown = start;
                     value.endTime = start + duration;
                     value.enabled = 1;
-                    ADV_COMBAT_TEXT_COOLDOWN = 1;
                 end
             elseif value.enabled == 1 then
                 if value.countdown >= value.endTime then
-                    local countdownMessage = value.var.." is ready";
-                    AdvancedCombatText_AddMessage(countdownMessage, ADV_COMBAT_TEXT_SCROLL_FUNCTION, 0.1, 0.1, 1);
+                    local countdownMessage = value.name.." is ready";
+                    local info = COOLDOWN_TEXT[value.name]; 
+                    AdvancedCombatText_AddMessage(countdownMessage, ADV_COMBAT_TEXT_SCROLL_FUNCTION, info.r, info.g, info.b);
                     value.enabled = 0;
-                    ADV_COMBAT_TEXT_COOLDOWN = 0;
                     value.countdown = nil;
                     value.endTime = nil;
                 else
@@ -114,7 +115,10 @@ function AdvancedCombatText_OnUpdate(self, elapsed)
             end
         end
     end
-            
+
+    -- Check if there are any cooldowns running
+    AdvancedCombatText_CheckCooldown();
+        
     for index, value in pairs(ADV_COMBAT_TEXT_TO_ANIMATE) do
         
         if ( value.scrollTime >= ADV_COMBAT_TEXT_SCROLLSPEED ) and value:GetText() ~= nil then -- 
@@ -146,22 +150,10 @@ function AdvancedCombatText_AddMessage(message, scrollFunction, r, g, b)
         return;
     end
 
-    --string = _G["AdvancedCombatText1"];
-    --if string:IsShown() then
-    --    AdvancedCombatText_RemoveMessage(string);
-    --end
-
     string:SetText(message);
     string:SetTextColor(r,g,b);
     string.scrollTime = 0;
     string.scrollFunction = scrollFunction;
-
-    --if string:GetText() == nil then
-    --    string.inRange = 0;
-    --else
-    --    string.inRange = nil;
-    --end
-
 
     local lowestMessage;
     local useXadjustment = 1;
@@ -183,7 +175,6 @@ function AdvancedCombatText_RemoveMessage(string)
     for index, value in pairs(ADV_COMBAT_TEXT_TO_ANIMATE) do
         if ( value == string ) then
             tremove(ADV_COMBAT_TEXT_TO_ANIMATE, index);
-            --string:SetText("");
             string:SetAlpha(0);
             string:Hide();
             string:SetPoint("TOP", WorldFrame, "BOTTOM", ADV_COMBAT_TEXT_LOCATIONS.startX, ADV_COMBAT_TEXT_LOCATIONS.startY);
@@ -224,10 +215,10 @@ function AdvancedCombatText_UpdateDisplayedMessages()
     CombatTextSetActiveUnit("player");
 
     -- Register events
-    AdvancedCombatText:RegisterEvent("PLAYER_REGEN_DISABLED");
+    --AdvancedCombatText:RegisterEvent("PLAYER_REGEN_DISABLED");
     AdvancedCombatText:RegisterEvent("PLAYER_REGEN_ENABLED");
     AdvancedCombatText:RegisterEvent("UNIT_SPELLCAST_START");
-    AdvancedCombatText:RegisterEvent("PLAYER_TARGET_CHANGED");
+    AdvancedCombatText:RegisterEvent("UNIT_TARGET");
     AdvancedCombatText:RegisterEvent("SPELL_UPDATE_COOLDOWN");
 
     -- Get scale
@@ -313,6 +304,36 @@ function AdvancedCombatText_PullSpellInfo(actionNum, ret)
     else
         print("Second argument must be variable from 'GetSpellInfo' payload");
         return nil;
+    end
+end
+
+function AdvancedCombatText_RangeFinder()
+    if ( not UnitAffectingCombat("player") )  then
+        if ( UnitIsEnemy("player", "target") ) then
+            local actionType, id, subType = GetActionInfo(1);
+            if actionType == "spell" then
+                local name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(id);
+                if IsSpellInRange(name,"target") == 1 and ADV_COMBAT_TEXT_RANGEFINDER == 0 then
+                    ADV_COMBAT_TEXT_RANGEFINDER = 1;
+                    -- print(format("%s is within range!", name));
+                    local Rmessage = format("%s IN RANGE", name);
+                    AdvancedCombatText_AddMessage(Rmessage, ADV_COMBAT_TEXT_SCROLL_FUNCTION, 1, 0.1, 0.1);
+                elseif IsSpellInRange(name,"target") == 0 and ADV_COMBAT_TEXT_RANGEFINDER == 1 then
+                    ADV_COMBAT_TEXT_RANGEFINDER = 0;
+                end
+            end
+        end
+    end 
+end
+
+function AdvancedCombatText_CheckCooldown()
+    for index, value in pairs(COOLDOWN_TEXT) do
+        if value.enabled == 1 then
+            ADV_COMBAT_TEXT_COOLDOWN = 1;
+            break;
+        else
+            ADV_COMBAT_TEXT_COOLDOWN = 0;
+        end
     end
 end
 
