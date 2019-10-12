@@ -1,0 +1,7 @@
+## Title: CombatTracker (Classic)
+## Interface: 11302
+## Notes: Basic DPS tracking
+##
+
+CombatTracker.lua
+CombatTracker.xml

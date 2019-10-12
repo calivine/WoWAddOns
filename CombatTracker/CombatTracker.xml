@@ -1,0 +1,34 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+  <Script file="CombatTracker.lua"/>
+  <Button name="CombatTracker" parent="UIParent" enableMouse="true" movable="true" frameStrata="LOW"> 
+    <Size>
+      <AbsDimension x="225" y="75"/>
+    </Size>
+    <Anchors>
+      <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="UIParent"/>
+    </Anchors>
+    <Layers>
+      <Layer level="OVERLAY">
+        <Texture name="$parentBG">
+          <Size x="225" y="75"/>
+          <Color r="0.22" g="0.22" b="0.22" a="0.75"/>
+          <Anchors>
+            <Anchor point="RIGHT"/>
+          </Anchors>
+        </Texture>
+        <FontString name="$parentText" inherits="GameFontNormalSmall" setAllPoints="true" text="CombatTracker"/>
+      </Layer>
+    </Layers>
+    <Scripts>
+      <OnLoad function="CombatTracker_OnLoad"/>
+      <OnEvent function="CombatTracker_OnEvent"/>
+      <OnClick function="CombatTracker_ReportDPS"/>
+      <OnDragStart>
+        self:StartMoving()
+      </OnDragStart>
+      <OnDragStop>
+        self:StopMovingOrSizing()
+      </OnDragStop>
+    </Scripts>
+  </Button>
+</Ui>
