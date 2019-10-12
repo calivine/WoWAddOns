@@ -1,0 +1,8 @@
+## Title: Threat UI (Classic)
+## Notes: Display yours and your party's threat status while in combat. 
+## 
+## Interface: 11302
+##
+
+ThreatUI.lua
+ThreatUI.xml

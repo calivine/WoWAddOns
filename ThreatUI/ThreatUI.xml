@@ -1,0 +1,51 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+	<Script file="ThreatUI.lua"/>
+  <FontString name="ThreatTextTemplate" inherits="GameFontNormal" virtual="true">
+    <Anchors>
+      <Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent_BG">
+        <Offset>
+          <AbsDimension x="20" y="-20"/>
+        </Offset>
+      </Anchor>
+    </Anchors>
+  </FontString>
+  <Button name="ThreatDisplay" parent="UIParent" enableMouse="true" movable="true" frameStrata="LOW"> 
+    <Size>
+      <AbsDimension x="225" y="150"/>
+    </Size>
+    <Anchors>
+      <Anchor point="LEFT" relativePoint="LEFT" relativeTo="UIParent"/>
+    </Anchors>
+    <Layers>
+      <Layer level="OVERLAY" setAllPoints="true">
+        <Texture name="$parent_BG">
+          <Size x="225" y="150"/>
+          <Color r="0.22" g="0.22" b="0.22" a="0.75"/>
+          <Anchors>
+            <Anchor point="LEFT"/>
+          </Anchors>
+        </Texture>
+        <FontString name="PartyMember1" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMember2" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMember3" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMember4" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMember5" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMemberThreat1" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMemberThreat2" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMemberThreat3" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMemberThreat4" inherits="ThreatTextTemplate"/>
+        <FontString name="PartyMemberThreat5" inherits="ThreatTextTemplate"/>
+      </Layer>
+    </Layers>
+    <Scripts>
+      <OnLoad function="ThreatUI_OnLoad"/>
+      <OnEvent function="ThreatUI_OnEvent"/>
+      <OnDragStart>
+        self:StartMoving()
+      </OnDragStart>
+      <OnDragStop>
+        self:StopMovingOrSizing()
+      </OnDragStop>
+    </Scripts>
+  </Button>
+</Ui>
