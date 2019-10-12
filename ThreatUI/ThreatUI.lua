@@ -69,6 +69,8 @@ function ThreatUI_LoadPlayerNames()
   ThreatDisplay:RegisterEvent("GROUP_FORMED");
   ThreatDisplay:RegisterEvent("UNIT_TARGET");
   ThreatDisplay:RegisterEvent("GROUP_ROSTER_UPDATE");
+  ThreatDisplay:RegisterForClicks("RightButtonUp");
+  ThreatDisplay:RegisterForDrag("LeftButton");
   
   _G["PartyMember1"]:SetText((UnitName("player")));
   if ( not IsInGroup() ) then
