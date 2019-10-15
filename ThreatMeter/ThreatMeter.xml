@@ -1,0 +1,19 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+  <Script file="ThreatMeter.lua"/>
+  <Button name="ThreatMeter" parent="UIParent" enableMouse="true" movable="true" frameStrata="LOW"> 
+    <Size>
+      <AbsDimension x="225" y="75"/>
+    </Size>
+    <Anchors>
+      <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="UIParent"/>
+    </Anchors>
+    <Layers>
+      <Layer level="OVERLAY">
+      </Layer>
+    </Layers>
+    <Scripts>
+      <OnLoad function="ThreatMeter_OnLoad"/>
+      <OnEvent function="ThreatMeter_OnEvent"/>
+    </Scripts>
+  </Button>
+</Ui>

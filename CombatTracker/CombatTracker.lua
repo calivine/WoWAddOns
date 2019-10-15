@@ -4,13 +4,19 @@ local total_time = 0;
 local total_damage = 0;
 local average_damage = 0;
 
+PARTY_ROSTER = {};
+ENEMY_ROSTER = {};
+
 function CombatTracker_OnLoad(self)
+    -- Add player to party roster
+    local playerID = UnitGUID("player");
+    PARTY_ROSTER[1] = playerID;
+    print(playerID);
     CombatTracker:RegisterEvent("PLAYER_REGEN_DISABLED");
     CombatTracker:RegisterEvent("PLAYER_REGEN_ENABLED");
     CombatTracker:RegisterEvent("UNIT_COMBAT");
-    CombatTracker:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
     CombatTracker:RegisterForClicks("RightButtonUp");
-    CombatTracker:RegisterForDrag("LeftButton");
+    CombatTracker:RegisterForDrag("LeftButton"); 
 end
 
 function CombatTracker_OnEvent(self, event, ...)
@@ -33,7 +39,6 @@ function CombatTracker_OnEvent(self, event, ...)
             end_time = GetTime();
             total_time = math.min(end_time - start_time, 1);
             average_dps = total_damage / total_time;
-            print(total_damage);
             CombatTracker_UpdateText();
             end
         end

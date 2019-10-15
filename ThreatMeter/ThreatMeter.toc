@@ -1,0 +1,7 @@
+## Title: ThreatMeter (Classic)
+## Interface: 11302
+## Notes: DPS and threat tracking for player and party.
+##
+
+ThreatMeter.lua
+ThreatMeter.xml
