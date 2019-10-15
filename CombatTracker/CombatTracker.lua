@@ -4,9 +4,6 @@ local total_time = 0;
 local total_damage = 0;
 local average_damage = 0;
 
-PARTY_ROSTER = {};
-ENEMY_ROSTER = {};
-
 function CombatTracker_OnLoad(self)
     -- Add player to party roster
     local playerID = UnitGUID("player");
