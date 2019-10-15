@@ -35,27 +35,27 @@ function PartyRoster_OnEvent(self, event, ...)
     if ( not IsInGroup() ) then
       if ( target == "player" or target == "target" ) then
         local targetName = (UnitName("playertarget"));
-        _G["PartyMemberThreat1"]:SetText(targetName);
-        _G["PartyMemberThreat1"]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember1"]:GetStringWidth()+23, -20);
+        _G["PartyMemberTarget1"]:SetText(targetName);
+        _G["PartyMemberTarget1"]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember1"]:GetStringWidth()+23, -20);
       else
-        _G["PartyMemberThreat1"]:SetText("");
+        _G["PartyMemberTarget1"]:SetText("");
       end
     else
       local n = GetNumGroupMembers();
 
       if ( target == "player" or target == "target" ) then
         local playerTarget = (UnitName("playertarget"));
-        _G["PartyMemberThreat1"]:SetText(playerTarget);
-        _G["PartyMemberThreat1"]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember1"]:GetStringWidth()+23, -20);
+        _G["PartyMemberTarget1"]:SetText(playerTarget);
+        _G["PartyMemberTarget1"]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember1"]:GetStringWidth()+23, -20);
       elseif ( string.match(target, "party") ) then
         for i=1, n-1 do
           local targetName = (UnitName("party"..i.."target"));
-          _G["PartyMemberThreat"..i+1]:SetText(targetName);
-          _G["PartyMemberThreat"..i+1]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember"..i+1]:GetStringWidth()+23, 20*(i+1)*-1);
+          _G["PartyMemberTarget"..i+1]:SetText(targetName);
+          _G["PartyMemberTarget"..i+1]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", _G["PartyMember"..i+1]:GetStringWidth()+23, 20*(i+1)*-1);
         end
       else
         for i=1, n-1 do
-          _G["PartyMemberThreat"..i]:SetText("");
+          _G["PartyMemberTarget"..i]:SetText("");
         end
       end
     end
@@ -66,11 +66,11 @@ end
 function PartyRoster_LoadPlayerNames()
   local string;
 
-  ThreatDisplay:RegisterEvent("GROUP_FORMED");
-  ThreatDisplay:RegisterEvent("UNIT_TARGET");
-  ThreatDisplay:RegisterEvent("GROUP_ROSTER_UPDATE");
-  ThreatDisplay:RegisterForClicks("RightButtonUp");
-  ThreatDisplay:RegisterForDrag("LeftButton");
+  PartyRosterDisplay:RegisterEvent("GROUP_FORMED");
+  PartyRosterDisplay:RegisterEvent("UNIT_TARGET");
+  PartyRosterDisplay:RegisterEvent("GROUP_ROSTER_UPDATE");
+  PartyRosterDisplay:RegisterForClicks("RightButtonUp");
+  PartyRosterDisplay:RegisterForDrag("LeftButton");
   
   _G["PartyMember1"]:SetText((UnitName("player")));
   if ( not IsInGroup() ) then
@@ -91,7 +91,7 @@ function PartyRoster_LoadPlayerNames()
 
   -- Set target name display positions
   --for i=1, 5 do
-  --  _G["PartyMemberThreat"..i]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", 112.5, 20*i*-1);
+  --  _G["PartyMemberTarget"..i]:SetPoint("TOPLEFT", "$parent_BG", "TOPLEFT", 112.5, 20*i*-1);
   --end
 end
 

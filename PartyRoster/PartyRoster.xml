@@ -30,11 +30,11 @@
         <FontString name="PartyMember3" inherits="RosterTextTemplate"/>
         <FontString name="PartyMember4" inherits="RosterTextTemplate"/>
         <FontString name="PartyMember5" inherits="RosterTextTemplate"/>
-        <FontString name="PartyMemberThreat1" inherits="RosterTextTemplate"/>
-        <FontString name="PartyMemberThreat2" inherits="RosterTextTemplate"/>
-        <FontString name="PartyMemberThreat3" inherits="RosterTextTemplate"/>
-        <FontString name="PartyMemberThreat4" inherits="RosterTextTemplate"/>
-        <FontString name="PartyMemberThreat5" inherits="RosterTextTemplate"/>
+        <FontString name="PartyMemberTarget1" inherits="RosterTextTemplate"/>
+        <FontString name="PartyMemberTarget2" inherits="RosterTextTemplate"/>
+        <FontString name="PartyMemberTarget3" inherits="RosterTextTemplate"/>
+        <FontString name="PartyMemberTarget4" inherits="RosterTextTemplate"/>
+        <FontString name="PartyMemberTarget5" inherits="RosterTextTemplate"/>
       </Layer>
     </Layers>
     <Scripts>
