@@ -97,8 +97,8 @@ end
 
 -- Clear party roster
 function PartyRoster_ClearPartyRoster()
-  for i=2, 5 do
-    print("Clearing...");
+  for i=2, GetNumGroupMembers() do
     _G["PartyMember"..i]:SetText("");
+    _G["PartyMemberTarget"..i]:SetText("");
   end
 end
