@@ -5,10 +5,6 @@ local total_damage = 0;
 local average_damage = 0;
 
 function CombatTracker_OnLoad(self)
-    -- Add player to party roster
-    local playerID = UnitGUID("player");
-    PARTY_ROSTER[1] = playerID;
-    print(playerID);
     CombatTracker:RegisterEvent("PLAYER_REGEN_DISABLED");
     CombatTracker:RegisterEvent("PLAYER_REGEN_ENABLED");
     CombatTracker:RegisterEvent("UNIT_COMBAT");
