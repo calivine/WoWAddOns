@@ -1,6 +1,3 @@
-PARTY_ROSTER = {};
-ENEMY_ROSTER = {};
-DMG = 0;
 
 local COUNTER = 0;
 local THROTTLE = 5.0;
@@ -21,24 +18,18 @@ local healEvents = {
 }
 
 local ThreatMeter = CreateFrame("Frame", "ThreatMeter", UIParent);
+ThreatMeter:EnableMouse(true);
+ThreatMeter:SetMovable(true);
+ThreatMeter:SetFrameStrata("LOW");
+
 
 function ThreatMeter:OnEvent(event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local timestamp, combatEvent, arg1, sourceGUID, sourceName, sourceFlags, arg2, destGUID, destName, destFlags, arg3, arg4, arg5, arg6, arg7 = CombatLogGetCurrentEventInfo();
-        local typeFlags = bit.band(select(5, ...), COMBATLOG_OBJECT_TYPE_MASK);
-        local isPlayer = typeFlags == COMBATLOG_OBJECT_TYPE_PLAYER;
-        
-        if isPlayer then
-            if combatEvent == "SPELL_DAMAGE" then
-                DMG = DMG + arg7;
-                print(DMG);
-            end
-        end
-        local srcFlags = select(5, ...);
-        if bit.band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY then
+        local timestamp, combatEvent, arg1, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, args = CombatLogGetCurrentEventInfo();
+        if bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY then
             return;
         end
-        self:ProcessEntry(...);
+        self:ProcessEntry(CombatLogGetCurrentEventInfo());
     elseif event == "GROUP_ROSTER_UPDATE" then
         for i = 1, GetNumGroupMembers() do
             local unit = "party" .. i;
@@ -83,7 +74,7 @@ function ThreatMeter:Initialize()
     local zero_mt = {
         __index = function(tbl, key)
             return 0;
-        end,
+        end
     };
 
     setmetatable(self.party_damage, zero_mt);
@@ -95,29 +86,39 @@ function ThreatMeter:Initialize()
             local new = setmetatable({}, zero_mt);
             rawset(tbl, key, new);
             return new;
-        end,
+        end
     };
 
     setmetatable(self.snapshots, emptytbl_mt);
     
     self.player_guid = UnitGUID("player");
 
-    print(self.player_guid);
-
     self:RegisterEvent("GROUP_ROSTER_UPDATE");
     self:RegisterEvent("UNIT_PET");
     self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
-
+    self:RegisterForDrag("LeftButton");
+    print("Initialized");
+    
     self:CreateFrames();
     self:UpdateFrame();
+    self:SetScript("OnDragStart", self.Start_Moving);
+    self:SetScript("OnDragStop", self.Stop_Moving);
 
+end
+
+function ThreatMeter:Start_Moving()
+    self:StartMoving();
+end
+
+function ThreatMeter:Stop_Moving()
+    self:StopMovingOrSizing();
 end
 
 
 
-function ThreatMeter:ProcessEntry(timestamp, combatEvent, srcGUID, srcName, srcFlags, destGUID, destName, destFlags, ...)
+function ThreatMeter:ProcessEntry(timestamp, combatEvent, arg1, srcGUID, srcName, srcFlags, arg2, destGUID, destName, destFlags, ...)
     if damageEvents[combatEvent] then
         local offset = combatEvent == "SWING_DAMAGE" and 1 or 4;
         local amount, overkill, school, resisted, blocked, absorbed = select(offset, ...);
@@ -143,10 +144,10 @@ function ThreatMeter:TakeSnapshot()
             if self.pet_guids[guid] then
                 guid = self.pet_guids[guid];
             end
-            
+            print("TS: "..UnitName(unit));
+            print("TS: "..self.party_damage[guid]);
             self.snapshots[guid].damage = self.party_damage[guid];
             self.snapshots[guid].heals = self.party_heals[guid];
-            print(self.party_damage[guid]);
         end
     end
 end
@@ -178,7 +179,7 @@ end
 
 function ThreatMeter:CreateFrames()
     self:ClearAllPoints();
-    self:SetPoint("TOP", MinimapCluster, "BOTTOM", 0, -15);
+    self:SetPoint("LEFT", UIParent, "LEFT", 40, -15);
     self:SetWidth(300);
     self:SetHeight(150);
     
@@ -201,11 +202,12 @@ function ThreatMeter:UpdateFrame(elapsed)
         local row = self.rows[idx];
         if UnitExists(unit) then
             local guid = UnitGUID(unit);
+            print("UF:" .. UnitName(unit));
             if self.pet_guids[guid] then
                 guid = self.pet_guids[guid];
             end
 
-            local dps, hps,
+            local dps, hps;
             if elapsed and elapsed > 0 then
                 dps = (self.party_damage[guid] - self.snapshots[guid].damage) / elapsed;
                 hps = (self.party_heals[guid] - self.snapshots[guid].heals) / elapsed;
@@ -221,7 +223,7 @@ function ThreatMeter:UpdateFrame(elapsed)
             local name = UnitName(unit);
             local dpstext = self:ShortNum(dps);
             local hpstext = self:ShortNum(hps);
-            row:SetFormattedText("[%s] DPS: %s, Heal %s", name, dpstext, hpstext);
+            row:SetFormattedText("[%s] DPS: %s, Heal: %s", name, dpstext, hpstext);
             row:Show();
         else
             row:Hide();
@@ -231,7 +233,7 @@ end
 
 function ThreatMeter:ShortNum(num)
     local large = num > 1000;
-    return string.format("%2.f%s", large and (num / 1000) or num, large and "k" or "");
+    return string.format("%.2f%s", large and (num / 1000) or num, large and "k" or "");
 end
 
 --function ThreatMeter_OnLoad(self)
