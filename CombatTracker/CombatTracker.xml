@@ -2,7 +2,7 @@
   <Script file="CombatTracker.lua"/>
   <Button name="CombatTracker" parent="UIParent" enableMouse="true" movable="true" frameStrata="LOW"> 
     <Size>
-      <AbsDimension x="225" y="75"/>
+      <AbsDimension x="165" y="35"/>
     </Size>
     <Anchors>
       <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="UIParent"/>
@@ -10,7 +10,7 @@
     <Layers>
       <Layer level="OVERLAY">
         <Texture name="$parentBG">
-          <Size x="225" y="75"/>
+          <Size x="165" y="35"/>
           <Color r="0.22" g="0.22" b="0.22" a="0.75"/>
           <Anchors>
             <Anchor point="RIGHT"/>
