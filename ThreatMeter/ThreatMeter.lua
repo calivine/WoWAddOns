@@ -1,12 +1,13 @@
 
 local COUNTER = 0;
-local THROTTLE = 5.0;
+local THROTTLE = 2.5;
 
 local units = {"player", "pet", "party1", "partypet1", "party2", "partypet2", "party3", "partypet3", "party4", "partypet4"};
 
 local damageEvents = {
     SWING_DAMAGE = true,
     RANGE_DAMAGE = true,
+    SPELL_DAMAGE = true,
     SPELL_PERIODIC_DAMAGE = true,
     DAMAGE_SHIELD = true,
     DAMAGE_SPLIT = true
@@ -18,14 +19,31 @@ local healEvents = {
 }
 
 local ThreatMeter = CreateFrame("Frame", "ThreatMeter", UIParent);
+--local ThreatMeterDisplayButton = CreateFrame("Button", "ThreatMeterDisplayButton", ThreatMeter, "UIPanelButtonTemplate");
 ThreatMeter:EnableMouse(true);
 ThreatMeter:SetMovable(true);
 ThreatMeter:SetFrameStrata("LOW");
+--[[
+ThreatMeterDisplayButton:SetHeight(20);
+ThreatMeterDisplayButton:SetWidth(75);
+ThreatMeterDisplayButton:SetText("Display");
+ThreatMeterDisplayButton:ClearAllPoints();
+ThreatMeterDisplayButton:SetPoint("TOPLEFT", 0, 50);
+]]
+
+
+ThreatMeter.BG = ThreatMeter:CreateTexture("ThreatMeter_BG", "BACKGROUND");
+ThreatMeter.BG:SetWidth(225);
+ThreatMeter.BG:SetHeight(150);
+ThreatMeter.BG:SetTexture(0.22, 0.22, 0.22, 0.75);
+ThreatMeter.BG:ClearAllPoints();
+ThreatMeter.BG:SetPoint("LEFT", UIParent, "LEFT");
+
 
 
 function ThreatMeter:OnEvent(event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        local timestamp, combatEvent, arg1, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, args = CombatLogGetCurrentEventInfo();
+        local timestamp, combatEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, args = CombatLogGetCurrentEventInfo();
         if bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY then
             return;
         end
@@ -52,6 +70,16 @@ function ThreatMeter:OnEvent(event, ...)
         self.combat_time = self.combat_time + GetTime() - self.combat_start;
         self:SetScript("OnUpdate", nil);
         self:UpdateFrame();
+        -- if refresh per battle is active:
+
+        for idx, unit in ipairs(units) do
+            local guid = UnitGUID(unit);
+            if guid then
+                
+                self.party_threat[guid] = 0;
+                self.combat_time = 0;
+            end
+        end
     elseif event == "PLAYER_LOGIN" then
         self:Initialize();
     end
@@ -68,6 +96,7 @@ end
 function ThreatMeter:Initialize()
     self.combat_time = 0;
     self.party_damage = {};
+    self.party_threat = {};
     self.party_heals = {};
     self.pet_guids = {};
 
@@ -78,6 +107,7 @@ function ThreatMeter:Initialize()
     };
 
     setmetatable(self.party_damage, zero_mt);
+    setmetatable(self.party_threat, zero_mt);
     setmetatable(self.party_heals, zero_mt);
 
     self.snapshots = {};
@@ -99,10 +129,10 @@ function ThreatMeter:Initialize()
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
     self:RegisterForDrag("LeftButton");
-    print("Initialized");
     
     self:CreateFrames();
     self:UpdateFrame();
+
     self:SetScript("OnDragStart", self.Start_Moving);
     self:SetScript("OnDragStop", self.Stop_Moving);
 
@@ -118,7 +148,7 @@ end
 
 
 
-function ThreatMeter:ProcessEntry(timestamp, combatEvent, arg1, srcGUID, srcName, srcFlags, arg2, destGUID, destName, destFlags, ...)
+function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, srcRaidFlags, destGUID, destName, destFlags, destRaidFlags, ...)
     if damageEvents[combatEvent] then
         local offset = combatEvent == "SWING_DAMAGE" and 1 or 4;
         local amount, overkill, school, resisted, blocked, absorbed = select(offset, ...);
@@ -127,7 +157,13 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, arg1, srcGUID, srcName
         if self.pet_guids[srcGUID] then
             srcGUID = self.pet_guids[srcGUID];
         end
+
+        --print("srcGUID:" .. srcGUID);
+        --print("amount:" .. amount);
+        --print("party_damage:" .. self.party_damage[srcGUID]);
+        
         self.party_damage[srcGUID] = self.party_damage[srcGUID] + amount;
+        self.party_threat[srcGUID] = self.party_threat[srcGUID] + amount;
     elseif healEvents[combatEvent] then
         local amount, overhealing, absorbed = select(4, ...);
         self.party_heals[srcGUID] = (self.party_heals[srcGUID] or 0) + (amount - overhealing);
@@ -139,14 +175,18 @@ end
 -- Loop through all the valid unit ids and store the current DPS or HPS so it can later be subtracted
 function ThreatMeter:TakeSnapshot()
     for idx, unit in ipairs(units) do
+        --print(unit);
         local guid = UnitGUID(unit);
+        --print(guid);
         if guid then
             if self.pet_guids[guid] then
                 guid = self.pet_guids[guid];
             end
-            print("TS: "..UnitName(unit));
-            print("TS: "..self.party_damage[guid]);
             self.snapshots[guid].damage = self.party_damage[guid];
+            local name = UnitName(unit);
+            --[[if name then
+                print(name .. "Threat:" .. self.party_threat[guid]);
+            end]]
             self.snapshots[guid].heals = self.party_heals[guid];
         end
     end
@@ -202,18 +242,17 @@ function ThreatMeter:UpdateFrame(elapsed)
         local row = self.rows[idx];
         if UnitExists(unit) then
             local guid = UnitGUID(unit);
-            print("UF:" .. UnitName(unit));
             if self.pet_guids[guid] then
                 guid = self.pet_guids[guid];
             end
 
             local dps, hps;
             if elapsed and elapsed > 0 then
-                dps = (self.party_damage[guid] - self.snapshots[guid].damage) / elapsed;
-                hps = (self.party_heals[guid] - self.snapshots[guid].heals) / elapsed;
+                dps = (self.party_damage[guid] - self.snapshots[guid].damage);-- / elapsed;
+                hps = (self.party_heals[guid] - self.snapshots[guid].heals);-- / elapsed;
             elseif self.combat_time > 0 then
-                dps = self.party_damage[guid] / self.combat_time;
-                hps = self.party_heals[guid] / self.combat_time;
+                dps = self.party_damage[guid];-- / self.combat_time;
+                hps = self.party_heals[guid];-- / self.combat_time;
             else
                 dps = 0;
                 hps = 0;
