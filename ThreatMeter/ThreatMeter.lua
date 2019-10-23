@@ -18,6 +18,11 @@ local healEvents = {
     SPELL_PERIODIC_HEAL = true
 }
 
+local regenEvents = {
+    SPELL_ENERGIZE = true,
+    SPELL_AURA_APPLIED = true
+}
+
 local ThreatMeter = CreateFrame("Frame", "ThreatMeter", UIParent);
 --local ThreatMeterDisplayButton = CreateFrame("Button", "ThreatMeterDisplayButton", ThreatMeter, "UIPanelButtonTemplate");
 ThreatMeter:EnableMouse(true);
@@ -42,30 +47,41 @@ ThreatMeter.BG:SetPoint("LEFT", UIParent, "LEFT");
 
 
 function ThreatMeter:OnEvent(event, ...)
-    if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+    if ( event == "COMBAT_LOG_EVENT_UNFILTERED" ) then
         local timestamp, combatEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, args = CombatLogGetCurrentEventInfo();
-        if bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY then
+        if ( bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY ) then
             return;
         end
         self:ProcessEntry(CombatLogGetCurrentEventInfo());
-    elseif event == "GROUP_ROSTER_UPDATE" then
+
+    elseif ( event == "GROUP_ROSTER_UPDATE" ) then
         for i = 1, GetNumGroupMembers() do
             local unit = "party" .. i;
             self:UpdatePets(unit);
+            local guid = UnitGUID(unit);
+            if ( guid ) then
+                self.threat_tables[guid].name = UnitName(unit);
+                print(self.threat_tables[guid].name);
+                self.threat_tables[guid].class = UnitClass(unit);
+                print(self.threat_tables[guid].class);
+                self.threat_tables[guid].threat = 0;
+            end
         end
-        if not self.in_combat then
+        if ( not self.in_combat ) then
             self:UpdateFrame();
         end
-    elseif event == "UNIT_PET" then
+    elseif ( event == "UNIT_PET" ) then
         local unit = ...;
         self:UpdatePets(unit);
-    elseif event == "PLAYER_REGEN_DISABLED" then
+
+    elseif ( event == "PLAYER_REGEN_DISABLED" ) then
         self.in_combat = true;
         self.combat_start = GetTime();
         COUNTER = 0;
         self:TakeSnapshot()
         self:SetScript("OnUpdate", self.OnUpdate);
-    elseif event == "PLAYER_REGEN_ENABLED" then
+
+    elseif ( event == "PLAYER_REGEN_ENABLED" ) then
         self.in_combat = false;
         self.combat_time = self.combat_time + GetTime() - self.combat_start;
         self:SetScript("OnUpdate", nil);
@@ -74,20 +90,23 @@ function ThreatMeter:OnEvent(event, ...)
 
         for idx, unit in ipairs(units) do
             local guid = UnitGUID(unit);
-            if guid then
+            if ( guid ) then
                 
                 self.party_threat[guid] = 0;
                 self.combat_time = 0;
+                self.snapshots[guid].threat = 0;
+                self.threat_tables[guid].threat = 0;
             end
         end
-    elseif event == "PLAYER_LOGIN" then
+
+    elseif ( event == "PLAYER_LOGIN" ) then
         self:Initialize();
     end
 end
 
 ThreatMeter:SetScript("OnEvent", ThreatMeter.OnEvent);
 
-if IsLoggedIn() then
+if ( IsLoggedIn() ) then
     ThreatMeter:Initialize();
 else
     ThreatMeter:RegisterEvent("PLAYER_LOGIN");
@@ -111,6 +130,8 @@ function ThreatMeter:Initialize()
     setmetatable(self.party_heals, zero_mt);
 
     self.snapshots = {};
+    self.threat_tables = {};
+
     local emptytbl_mt = {
         __index = function(tbl, key)
             local new = setmetatable({}, zero_mt);
@@ -120,12 +141,20 @@ function ThreatMeter:Initialize()
     };
 
     setmetatable(self.snapshots, emptytbl_mt);
+    setmetatable(self.threat_tables, emptytbl_mt);
     
     self.player_guid = UnitGUID("player");
+    self.threat_tables[self.player_guid].name = UnitName("player");
+    print(self.threat_tables[self.player_guid].name);
+    --local className, classFileName, classID = UnitClass("player");
+    self.threat_tables[self.player_guid].class = UnitClass("player");
+    print(self.threat_tables[self.player_guid].class);
+    self.threat_tables[self.player_guid].threat = 0;
 
     self:RegisterEvent("GROUP_ROSTER_UPDATE");
     self:RegisterEvent("UNIT_PET");
     self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
+    self:RegisterEvent("UNIT_POWER_UPDATE");
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
     self:RegisterForDrag("LeftButton");
@@ -157,16 +186,20 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
         if self.pet_guids[srcGUID] then
             srcGUID = self.pet_guids[srcGUID];
         end
-
-        --print("srcGUID:" .. srcGUID);
-        --print("amount:" .. amount);
-        --print("party_damage:" .. self.party_damage[srcGUID]);
-        
         self.party_damage[srcGUID] = self.party_damage[srcGUID] + amount;
         self.party_threat[srcGUID] = self.party_threat[srcGUID] + amount;
+        self.threat_tables[srcGUID].threat = self.threat_tables[srcGUID].threat + amount;
+        -- When unit is a warrior in battle stance:
+        if self.threat_tables[srcGUID].class == "Warrior" then
+            self.threat_tables[srcGUID].threat = self.threat_tables[srcGUID].threat * 0.8;
+        end
+
     elseif healEvents[combatEvent] then
         local amount, overhealing, absorbed = select(4, ...);
         self.party_heals[srcGUID] = (self.party_heals[srcGUID] or 0) + (amount - overhealing);
+        self.party_threat[srcGUID] = self.party_threat[srcGUID] + ( ( amount - overhealing )  * 0.5 );
+        self.threat_tables[srcGUID].threat = self.threat_tables[srcGUID].threat + ( ( amount - overhealing )  * 0.5 );
+        
     elseif combatEvent == "SPELL_SUMMON" then
         self.pet_guids[destGUID] = srcGUID .. "pet";
     end
@@ -175,18 +208,15 @@ end
 -- Loop through all the valid unit ids and store the current DPS or HPS so it can later be subtracted
 function ThreatMeter:TakeSnapshot()
     for idx, unit in ipairs(units) do
-        --print(unit);
         local guid = UnitGUID(unit);
-        --print(guid);
         if guid then
             if self.pet_guids[guid] then
                 guid = self.pet_guids[guid];
             end
             self.snapshots[guid].damage = self.party_damage[guid];
-            local name = UnitName(unit);
-            --[[if name then
-                print(name .. "Threat:" .. self.party_threat[guid]);
-            end]]
+            self.snapshots[guid].threat = self.threat_tables[guid].threat;
+            print(UnitName(unit));
+            print(self.threat_tables[guid].threat);
             self.snapshots[guid].heals = self.party_heals[guid];
         end
     end
@@ -238,6 +268,11 @@ function ThreatMeter:CreateFrames()
 end
 
 function ThreatMeter:UpdateFrame(elapsed)
+    for k,v in pairs(self.threat_tables) do
+        for k1, v1 in pairs(self.threat_tables[k]) do
+            print(v1);
+        end
+    end
     for idx, unit in ipairs(units) do
         local row = self.rows[idx];
         if UnitExists(unit) then
@@ -246,23 +281,28 @@ function ThreatMeter:UpdateFrame(elapsed)
                 guid = self.pet_guids[guid];
             end
 
-            local dps, hps;
+            local dps, hps, threat;
             if elapsed and elapsed > 0 then
                 dps = (self.party_damage[guid] - self.snapshots[guid].damage);-- / elapsed;
                 hps = (self.party_heals[guid] - self.snapshots[guid].heals);-- / elapsed;
+                threat = self.threat_tables[guid].threat;
             elseif self.combat_time > 0 then
                 dps = self.party_damage[guid];-- / self.combat_time;
                 hps = self.party_heals[guid];-- / self.combat_time;
+                threat = self.threat_tables[guid].threat;
             else
                 dps = 0;
                 hps = 0;
+                threat = 0;
             end
 
             -- Update frame with new values
             local name = UnitName(unit);
             local dpstext = self:ShortNum(dps);
             local hpstext = self:ShortNum(hps);
-            row:SetFormattedText("[%s] DPS: %s, Heal: %s", name, dpstext, hpstext);
+            local threatText = threat;
+            --row:SetFormattedText("[%s] DPS: %s, Heal: %s", name, dpstext, hpstext);
+            row:SetFormattedText("%d. %s: %s", idx, name, threatText);
             row:Show();
         else
             row:Hide();
