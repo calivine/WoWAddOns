@@ -2,8 +2,6 @@
 local COUNTER = 0;
 local THROTTLE = 1.25;
 
-local DISPLAY_TYPE = "threat";
-
 local units = {"player", "pet", "party1", "partypet1", "party2", "partypet2", "party3", "partypet3", "party4", "partypet4"};
 
 local damageEvents = {
@@ -25,6 +23,7 @@ local regenEvents = {
     SPELL_AURA_APPLIED = true
 }
 
+-- RGB values for each class's font color. 
 local CLASS_DECORATORS = {
     DRUID = { r = 1.0, g = 0.49, b = 0.04 },
     HUNTER = { r = 0.67, g = 0.83, b = 0.45 },
@@ -38,14 +37,11 @@ local CLASS_DECORATORS = {
     PET = { r = 1, g = 1, b = 1 }
 }
 
-
 local PARTY_TARGET = nil;
 
 local PARTY_ROSTER = {};
-local PARTY_ROSTER_test = {};
 
-ThreatMeter = CreateFrame("Frame", "ThreatMeter", UIParent);
-ThreatMeterDisplayButton = CreateFrame("Button", "ThreatMeterDisplayButton", ThreatMeter, "UIPanelButtonTemplate");
+local ThreatMeter = CreateFrame("Frame", "ThreatMeter", UIParent);
 
 ThreatMeter:EnableMouse(true);
 ThreatMeter:SetMovable(true);
@@ -63,50 +59,18 @@ ThreatMeter_BG:SetAlpha(1);
 ThreatMeter_BG:SetHeight(150);
 ThreatMeter_BG:SetWidth(225);
 
-ThreatMeterDisplayButton:SetHeight(20);
-ThreatMeterDisplayButton:SetWidth(75);
-ThreatMeterDisplayButton:SetText("Damage");
-ThreatMeterDisplayButton:ClearAllPoints();
-ThreatMeterDisplayButton:SetPoint("TOPLEFT", 0, 50);
-ThreatMeterDisplayButton:RegisterForClicks("LeftButtonDown");
-
-
-ThreatMeterDisplayButton:SetScript("OnClick", function(self, button, down)
-    if DISPLAY_TYPE == "threat" then
-        ThreatMeterDisplayButton:SetText("Damage");
-        DISPLAY_TYPE = "damage";
-    elseif DISPLAY_TYPE == "damage" then
-        ThreatMeterDisplayButton:SetText("Threat");
-        DISPLAY_TYPE = "threat";
-    end
-end);
-
-
 function ThreatMeter:OnEvent(event, ...)
     if ( event == "COMBAT_LOG_EVENT_UNFILTERED" ) then
         
         local timestamp, combatEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, args = CombatLogGetCurrentEventInfo();
         
+        -- If combatEvent is not about the party, return. 
         if ( bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MASK) > COMBATLOG_OBJECT_AFFILIATION_PARTY ) then
             return;
         end
 
         self:ProcessEntry(CombatLogGetCurrentEventInfo());
     
-    elseif ( event == "UNIT_SPELLCAST_SUCCEEDED" ) then
-        arg1, arg2, arg3 = ...;
-        
-        local class = UnitClass(arg1);
-        class = string.upper(class);
-        
-        local name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(arg3);
-        
-        local rank = GetSpellSubtext(arg3);
-        if ( rank ~= nil ) then
-            rank = self:GetRank(rank);
-        end
-        name = self:FormatSpell(name);
-
     elseif ( event == "GROUP_ROSTER_UPDATE" ) then
         print("GRP_ROSTER_UPDATE");
         for i = 1, GetNumGroupMembers() do
@@ -116,23 +80,17 @@ function ThreatMeter:OnEvent(event, ...)
             if ( guid ) then
                 local name, realm = UnitName(unit);
                 local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(guid);
-                PARTY_ROSTER[guid] = name;
-                print(PARTY_ROSTER[guid]);
-                PARTY_ROSTER_test[self.player_guid] = {};
-                PARTY_ROSTER_test[self.player_guid].name = name;
-                PARTY_ROSTER_test[self.player_guid].class = class;
-                PARTY_ROSTER_test[self.player_guid].multiplier = 0;
+                PARTY_ROSTER[self.player_guid] = {};
+                PARTY_ROSTER[self.player_guid].name = name;
+                PARTY_ROSTER[self.player_guid].class = class;
+                PARTY_ROSTER[self.player_guid].multiplier = 0;
             end
         end
         if ( not self.in_combat ) then
             self:UpdateFrame();
         end
 
-        for k,v in pairs(PARTY_ROSTER_test) do
-            for k1,v1 in pairs(PARTY_ROSTER_test[k]) do
-                print(PARTY_ROSTER_test[k][k1].v);
-            end
-        end
+        self:IterateTables(PARTY_ROSTER);
         
 
     elseif ( event == "UNIT_PET" ) then
@@ -149,7 +107,7 @@ function ThreatMeter:OnEvent(event, ...)
     elseif ( event == "PLAYER_REGEN_ENABLED" ) then
         self.in_combat = false;
         self.combat_time = self.combat_time + GetTime() - self.combat_start;
-        self:SetScript("OnUpdate", nil);
+        -- self:SetScript("OnUpdate", nil);
         self:UpdateFrame();
         
         for idx, unit in ipairs(units) do
@@ -188,7 +146,7 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
             srcGUID = self.pet_guids[srcGUID];
         end]]
 
-        if ( PARTY_ROSTER_test[srcGUID].class == "Warrior" ) then
+        if ( PARTY_ROSTER[srcGUID].class == "Warrior" ) then
             if ( combatEvent == "SPELL_DAMAGE" ) then
                 local rank = self:GetRank(GetSpellSubtext(arg2));
                 arg2 = self:FormatSpell(arg2);
@@ -198,9 +156,8 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
                     end  
                 end
             end
-            print(PARTY_ROSTER_test[srcGUID].multiplier);
             amount = amount * 2.3;
-        elseif PARTY_ROSTER_test[srcGUID].class == "Mage" then
+        elseif PARTY_ROSTER[srcGUID].class == "Mage" then
             amount = amount * 0.7;
         end
 
@@ -222,8 +179,25 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
         
 
     elseif ( healEvents[combatEvent] ) then
-        local amount, overhealing, absorbed = select(4, ...);
-        self.party_heals[srcGUID] = (self.party_heals[srcGUID] or 0) + (amount - overhealing);
+        if ( self.in_combat ) then
+
+            local amount, overhealing, absorbed = select(4, ...);
+            local healing_threat = amount - overhealing;
+            -- Divide  the amount of healing done by the number of mob's in the the threat table.
+            healing_threat = healing_threat / table.getn(MOB_THREAT_TABLE);
+            for k,v in pairs(MOB_THREAT_TABLE) do
+                for guid,value in pairs(v) do
+                    if ( MOB_THREAT_TABLE[v][srcGUID] == nil ) then
+                        MOB_THREAT_TABLE[v][srcGUID] = healing_threat;
+                        
+                    else
+                        self.MOB_THREAT_TABLE[v][srcGUID] = self.MOB_THREAT_TABLE[v][srcGUID] + healing_threat;
+                    end
+                end
+            end
+            self.party_heals[srcGUID] = (self.party_heals[srcGUID] or 0) + (amount - overhealing);
+        end
+        
         -- self.threat_tables[srcGUID].threat = self.threat_tables[srcGUID].threat + ( ( amount - overhealing )  * 0.5 );
         
     elseif ( combatEvent == "SPELL_SUMMON" ) then
@@ -270,8 +244,10 @@ function ThreatMeter:OnUpdate(elapsed)
     COUNTER = COUNTER + elapsed;
     if COUNTER >= THROTTLE then
         COUNTER = 0;
-        self:UpdateFrame(THROTTLE);
-        self:TakeSnapshot();
+        if ( self.in_combat ) then
+            self:UpdateFrame(THROTTLE);
+            self:TakeSnapshot();
+        end
     end
 end
 
@@ -284,7 +260,7 @@ function ThreatMeter:CreateFrames()
     self.rows = {};
     display_target = self:CreateFontString(nil, "OVERLAY", "GameFontNormal");
     display_target:SetText("");
-    display_target:SetPoint("TOP");
+    display_target:SetPoint("TOPLEFT");
     for i = 1, 10 do
         local row = self:CreateFontString(nil, "OVERLAY", "GameFontNormal");
         row:SetText("");
@@ -350,7 +326,7 @@ function ThreatMeter:UpdateFrame(elapsed)
             local row = self.rows[i];
             
             -- Get the unit's class and corresponding text color.
-            local class = PARTY_ROSTER_test[guid].class; 
+            local class = PARTY_ROSTER[guid].class; 
             if ( class ) then
                 class = string.upper(class);
             else
@@ -358,11 +334,7 @@ function ThreatMeter:UpdateFrame(elapsed)
             end
             
             row:SetTextColor(CLASS_DECORATORS[class].r, CLASS_DECORATORS[class].g, CLASS_DECORATORS[class].b);
-            if ( DISPLAY_TYPE == "threat" ) then
-                row:SetFormattedText("%d. %s: %s", i, PARTY_ROSTER_test[guid].name, v);
-            elseif ( DISPLAY_TYPE == "damage" ) then
-                row:SetFormattedText("%d. %s: %s", i, PARTY_ROSTER_test[guid].name, self.snapshots[guid].damage);
-            end
+            row:SetFormattedText("%d. %s: %s", i, PARTY_ROSTER[guid].name, v);
             row:Show();
             
         end
@@ -410,41 +382,32 @@ function ThreatMeter:Initialize()
     setmetatable(self.snapshots, emptytbl_mt);
     setmetatable(self.MOB_INFO, emptytbl_mt);
     
-    
-    --setmetatable(self.MOB_THREAT_TABLE, emptytbl_mt);
-    --[[
-    self.player_guid = UnitGUID("player");
-    local name, realm = UnitName("player");
-    local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(self.player_guid);
-    PARTY_ROSTER[self.player_guid] = name;
-    PARTY_ROSTER_test[self.player_guid] = {};
-    PARTY_ROSTER_test[self.player_guid].name = name;
-    PARTY_ROSTER_test[self.player_guid].class = class;]]
-    if ( GetNumGroupMembers() == 1 ) then
+    if ( GetNumGroupMembers() == 0 ) then
+        
         self.player_guid = UnitGUID("player");
         local name, realm = UnitName("player");
         local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(self.player_guid);
-        PARTY_ROSTER[self.player_guid] = name;
-        PARTY_ROSTER_test[self.player_guid] = {};
-        PARTY_ROSTER_test[self.player_guid].name = name;
-        PARTY_ROSTER_test[self.player_guid].class = class;
-        PARTY_ROSTER_test[guid].multiplier = 3;
+        PARTY_ROSTER[self.player_guid] = {};
+        PARTY_ROSTER[self.player_guid].name = name;
+        PARTY_ROSTER[self.player_guid].class = class;
+        PARTY_ROSTER[self.player_guid].multiplier = 1;
+        self:GetTalentModifiers(self.player_guid);
     else
+        
         for idx, unit in ipairs(units) do
             local guid = UnitGUID(unit);
             if ( guid ) then
                 local name, realm = UnitName(unit);
                 local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(guid);
-                PARTY_ROSTER[guid] = name;
-                PARTY_ROSTER_test[guid] = {};
-                PARTY_ROSTER_test[guid].name = name;
-                PARTY_ROSTER_test[guid].class = class;
-                PARTY_ROSTER_test[guid].multiplier = 3;
+                PARTY_ROSTER[guid] = {};
+                PARTY_ROSTER[guid].name = name;
+                PARTY_ROSTER[guid].class = class;
+                PARTY_ROSTER[guid].multiplier = 1;
             end
         end
     end
-
-
+    self:IterateTables(PARTY_ROSTER);
+    
     self:RegisterEvent("GROUP_ROSTER_UPDATE");
     self:RegisterEvent("UNIT_PET");
     self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
@@ -452,7 +415,6 @@ function ThreatMeter:Initialize()
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
-    self:RegisterForDrag("LeftButton");
     
     self:CreateFrames();
     self:UpdateFrame();
@@ -463,11 +425,6 @@ function ThreatMeter:Initialize()
 end
 
 
-
-
-
-
-
 --[[
      Utility functions:
         ShortNum
@@ -475,6 +432,7 @@ end
         StopMoving
         spairs
         GetRank
+        IterateTables
         
 ------------------------------------------------------------------------------------------]]
 
@@ -521,20 +479,27 @@ function ThreatMeter:FormatSpell(arg2)
     return string.upper(string.gsub(arg2, " ", "_"));
 end
 
---function ThreatMeter_OnLoad(self)
---    local playerID = UnitGUID("player");
-  --  PARTY_ROSTER[1] = playerID;
-    --print(playerID);
-    --ThreatMeter:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
---end
+function ThreatMeter:IterateTables(tbl)
+    for key,value in pairs(tbl) do
+        print(key);
+        if ( type(value) == "table" ) then
+            self:IterateTables(value)
+        else
+            print(value)
+        end
+    end
+end
 
---function ThreatMeter_OnEvent(self, event, ...)
-  --  if ( event == "COMBAT_LOG_EVENT_UNFILTERED" ) then
-    --    local timestamp, combatEvent, arg1, sourceGUID, sourceName, sourceFlags, arg2, destGUID, destName, destFlags, arg3, arg4, arg5, arg6, arg7 = CombatLogGetCurrentEventInfo();
-      --  if ( sourceGUID == PARTY_ROSTER[1] ) then
-        --    print(combatEvent);
-          --  print(arg7);
-            --print(CombatLogGetCurrentEventInfo());
-        --end
-    --end
---end
+function ThreatMeter:GetTalentModifiers(guid)
+    local class = PARTY_ROSTER[guid].class;
+    if ( class and class == "Warrior" ) then
+        -- Get info on Defiance talent
+        local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,9,2);
+        return available * 3;
+        -- print(GetTalentInfo(3,9,2));
+    elseif ( class and class == "Mage" ) then
+        print(GetTalentInfo(1,1,1));
+    end
+end
+
+    
