@@ -498,7 +498,8 @@ function ThreatMeter:GetTalentModifiers(guid)
         return available * 3;
         -- print(GetTalentInfo(3,9,2));
     elseif ( class and class == "Mage" ) then
-        print(GetTalentInfo(1,1,1));
+        local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,12,2);
+        return available * 30;
     end
 end
 
