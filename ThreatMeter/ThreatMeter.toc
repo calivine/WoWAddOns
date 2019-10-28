@@ -3,5 +3,6 @@
 ## Notes: DPS and threat tracking for player and party.
 ##
 
+ThreatModifiers.lua
 ThreatMeter.lua
 ThreatMeter.xml
