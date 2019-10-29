@@ -156,7 +156,14 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
                     end  
                 end
             end
-            amount = amount * 2.3;
+            local stance = GetShapeshiftForm();
+            if ( stance == 1 or stance == 3 ) then
+                amount = amount * 1.8;
+            else
+                local multiplier = 130 + PARTY_ROSTER[srcGUID].multiplier;
+                amount = amount * multiplier;
+            end
+            -- amount = amount * 2.3;
         elseif PARTY_ROSTER[srcGUID].class == "Mage" then
             amount = amount * 0.7;
         end
@@ -165,6 +172,7 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
         if ( self.MOB_THREAT_TABLE[destGUID] ) == nil then
             self.MOB_THREAT_TABLE[destGUID] = {};
             self.MOB_THREAT_TABLE[destGUID][srcGUID] = amount;
+            self.MOB_THREAT_TABLE[destGUID].name = destName;
             self.MOB_INFO[destGUID] = destName;
         else
             if ( self.MOB_THREAT_TABLE[destGUID][srcGUID] ) == nil then
@@ -202,6 +210,13 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
         
     elseif ( combatEvent == "SPELL_SUMMON" ) then
         self.pet_guids[destGUID] = srcGUID .. "pet";
+
+    elseif ( combatEvent == "UNIT_DIED" ) then
+        print("Unit dead.");
+        for k,v in pairs(MOB_THREAT_TABLE) do
+            print(k);
+        end
+        
     
     end
 end
@@ -320,7 +335,7 @@ function ThreatMeter:UpdateFrame(elapsed)
     end
     local i = 0;
     if ( PARTY_TARGET ~= nil ) then
-        display_target:SetFormattedText("Targeting: %s", self.MOB_INFO[PARTY_TARGET]);
+        display_target:SetFormattedText("Targeting: %s", self.MOB_THREAT_TABLE[PARTY_TARGET].name);
         for guid,v in self:spairs(self.MOB_THREAT_TABLE[PARTY_TARGET], function(t,a,b) return t[b] < t[a] end) do
             i = i + 1;
             local row = self.rows[i];
@@ -499,7 +514,7 @@ function ThreatMeter:GetTalentModifiers(guid)
         -- print(GetTalentInfo(3,9,2));
     elseif ( class and class == "Mage" ) then
         local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,12,2);
-        return available * 30;
+        return available * 10;
     end
 end
 
