@@ -80,10 +80,10 @@ function ThreatMeter:OnEvent(event, ...)
             if ( guid ) then
                 local name, realm = UnitName(unit);
                 local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(guid);
-                PARTY_ROSTER[self.player_guid] = {};
-                PARTY_ROSTER[self.player_guid].name = name;
-                PARTY_ROSTER[self.player_guid].class = class;
-                PARTY_ROSTER[self.player_guid].multiplier = 0;
+                PARTY_ROSTER[guid] = {};
+                PARTY_ROSTER[guid].name = name;
+                PARTY_ROSTER[guid].class = class;
+                PARTY_ROSTER[guid].multiplier = 0;
             end
         end
         if ( not self.in_combat ) then
@@ -148,12 +148,15 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
 
         if ( PARTY_ROSTER[srcGUID].class == "Warrior" ) then
             if ( combatEvent == "SPELL_DAMAGE" ) then
-                local rank = self:GetRank(GetSpellSubtext(arg2));
-                arg2 = self:FormatSpell(arg2);
-                for k,v in pairs(SPECIAL_ABILITIES["WARRIOR"]) do
-                    if ( k == arg2 ) then
-                        amount = amount + SPECIAL_ABILITIES["WARRIOR"][arg2][rank];
-                    end  
+                local rank = GetSpellSubtext(arg2);
+                if rank ~= nil then
+                    rank = self:GetRank(GetSpellSubtext(arg2));
+                    arg2 = self:FormatSpell(arg2);
+                    for k,v in pairs(SPECIAL_ABILITIES["WARRIOR"]) do
+                        if ( k == arg2 ) then
+                            amount = amount + SPECIAL_ABILITIES["WARRIOR"][arg2][rank];
+                        end  
+                    end
                 end
             end
             local stance = GetShapeshiftForm();
@@ -192,11 +195,13 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
             local amount, overhealing, absorbed = select(4, ...);
             local healing_threat = amount - overhealing;
             -- Divide  the amount of healing done by the number of mob's in the the threat table.
-            healing_threat = healing_threat / table.getn(MOB_THREAT_TABLE);
-            for k,v in pairs(MOB_THREAT_TABLE) do
+            
+            healing_threat = healing_threat / table.getn(self.MOB_THREAT_TABLE);
+            
+            for k,v in pairs(self.MOB_THREAT_TABLE) do
                 for guid,value in pairs(v) do
-                    if ( MOB_THREAT_TABLE[v][srcGUID] == nil ) then
-                        MOB_THREAT_TABLE[v][srcGUID] = healing_threat;
+                    if ( self.MOB_THREAT_TABLE[v][srcGUID] == nil ) then
+                        self.MOB_THREAT_TABLE[v][srcGUID] = healing_threat;
                         
                     else
                         self.MOB_THREAT_TABLE[v][srcGUID] = self.MOB_THREAT_TABLE[v][srcGUID] + healing_threat;
@@ -212,12 +217,8 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
         self.pet_guids[destGUID] = srcGUID .. "pet";
 
     elseif ( combatEvent == "UNIT_DIED" ) then
-        print("Unit dead.");
-        for k,v in pairs(MOB_THREAT_TABLE) do
-            print(k);
-        end
-        
-    
+        self.MOB_THREAT_TABLE[destGUID] = nil;
+        PARTY_TARGET = nil;
     end
 end
 
@@ -334,9 +335,17 @@ function ThreatMeter:UpdateFrame(elapsed)
         end
     end
     local i = 0;
+    
     if ( PARTY_TARGET ~= nil ) then
+        local THREAT_DISPLAY = {};
+        for k,v in pairs(self.MOB_THREAT_TABLE[PARTY_TARGET]) do
+            if ( type(v) == "number" ) then
+                THREAT_DISPLAY[k] = v;
+            end
+        end
+        
         display_target:SetFormattedText("Targeting: %s", self.MOB_THREAT_TABLE[PARTY_TARGET].name);
-        for guid,v in self:spairs(self.MOB_THREAT_TABLE[PARTY_TARGET], function(t,a,b) return t[b] < t[a] end) do
+        for guid,v in self:spairs(THREAT_DISPLAY, function(t,a,b) return t[b] < t[a] end) do
             i = i + 1;
             local row = self.rows[i];
             
@@ -405,8 +414,7 @@ function ThreatMeter:Initialize()
         PARTY_ROSTER[self.player_guid] = {};
         PARTY_ROSTER[self.player_guid].name = name;
         PARTY_ROSTER[self.player_guid].class = class;
-        PARTY_ROSTER[self.player_guid].multiplier = 1;
-        self:GetTalentModifiers(self.player_guid);
+        PARTY_ROSTER[self.player_guid].multiplier = self:GetTalentModifiers(self.player_guid) or 0;
     else
         
         for idx, unit in ipairs(units) do
@@ -510,11 +518,11 @@ function ThreatMeter:GetTalentModifiers(guid)
     if ( class and class == "Warrior" ) then
         -- Get info on Defiance talent
         local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,9,2);
-        return available * 3;
+        return selected * 3;
         -- print(GetTalentInfo(3,9,2));
     elseif ( class and class == "Mage" ) then
         local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,12,2);
-        return available * 10;
+        return selected * 10;
     end
 end
 
