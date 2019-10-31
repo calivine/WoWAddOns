@@ -160,3 +160,20 @@ SPECIAL_ABILITIES = {
     }
 }
 
+TALENT_MODIFIERS = {
+    WARRIOR = {
+        1 = {
+            3,
+            9,
+            2
+        }
+    },
+    MAGE = {
+        1 = {
+            3,
+            12,
+            2
+        }
+    }
+}
+

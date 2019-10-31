@@ -83,6 +83,7 @@ function ThreatMeter:OnEvent(event, ...)
                 PARTY_ROSTER[guid] = {};
                 PARTY_ROSTER[guid].name = name;
                 PARTY_ROSTER[guid].class = class;
+                -- Need function that looks at class and talents and calculates any associated threat modifiers.
                 PARTY_ROSTER[guid].multiplier = 0;
             end
         end
@@ -134,7 +135,8 @@ end
 function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, srcRaidFlags, destGUID, destName, destFlags, destRaidFlags, ...)
     if ( damageEvents[combatEvent] ) then
         
-        local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 = ...;
+        -- local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 = ...;
+        local arg2 = (select(2, ...));
         -- print(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
         
         local offset = combatEvent == "SWING_DAMAGE" and 1 or 4;
@@ -152,8 +154,8 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
                 if rank ~= nil then
                     rank = self:GetRank(GetSpellSubtext(arg2));
                     arg2 = self:FormatSpell(arg2);
-                    for k,v in pairs(SPECIAL_ABILITIES["WARRIOR"]) do
-                        if ( k == arg2 ) then
+                    for action,v in pairs(SPECIAL_ABILITIES["WARRIOR"]) do
+                        if ( action == arg2 ) then
                             amount = amount + SPECIAL_ABILITIES["WARRIOR"][arg2][rank];
                         end  
                     end
@@ -191,20 +193,19 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
 
     elseif ( healEvents[combatEvent] ) then
         if ( self.in_combat ) then
-
             local amount, overhealing, absorbed = select(4, ...);
-            local healing_threat = amount - overhealing;
+            local healing_threat = amount;
             -- Divide  the amount of healing done by the number of mob's in the the threat table.
-            
-            healing_threat = healing_threat / table.getn(self.MOB_THREAT_TABLE);
+            local mob_count = self:TableLength(self.MOB_THREAT_TABLE);
+            healing_threat = healing_threat / mob_count;
             
             for k,v in pairs(self.MOB_THREAT_TABLE) do
                 for guid,value in pairs(v) do
-                    if ( self.MOB_THREAT_TABLE[v][srcGUID] == nil ) then
-                        self.MOB_THREAT_TABLE[v][srcGUID] = healing_threat;
-                        
+                    print(value);
+                    if ( self.MOB_THREAT_TABLE[k][srcGUID] == nil ) then
+                        self.MOB_THREAT_TABLE[k][srcGUID] = healing_threat;
                     else
-                        self.MOB_THREAT_TABLE[v][srcGUID] = self.MOB_THREAT_TABLE[v][srcGUID] + healing_threat;
+                        self.MOB_THREAT_TABLE[k][srcGUID] = self.MOB_THREAT_TABLE[k][srcGUID] + healing_threat;
                     end
                 end
             end
@@ -414,6 +415,7 @@ function ThreatMeter:Initialize()
         PARTY_ROSTER[self.player_guid] = {};
         PARTY_ROSTER[self.player_guid].name = name;
         PARTY_ROSTER[self.player_guid].class = class;
+        -- Need function that looks at class and talents and calculates any associated threat modifiers.
         PARTY_ROSTER[self.player_guid].multiplier = self:GetTalentModifiers(self.player_guid) or 0;
     else
         
@@ -515,6 +517,8 @@ end
 
 function ThreatMeter:GetTalentModifiers(guid)
     local class = PARTY_ROSTER[guid].class;
+    print(TALENT_MODIFIERS[string.upper(class)][1].2);
+    
     if ( class and class == "Warrior" ) then
         -- Get info on Defiance talent
         local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,9,2);
@@ -525,5 +529,12 @@ function ThreatMeter:GetTalentModifiers(guid)
         return selected * 10;
     end
 end
+
+function ThreatMeter:TableLength(tbl)
+    local count = 0;
+    for _ in pairs(tbl) do count = count + 1 end
+    return count;
+end
+
 
     
