@@ -1,0 +1,8 @@
+## Title: MagicActivity (Classic)
+## Interface: 11302
+## Notes: Player kill tracker with advanced display options.
+##
+
+MagicActivity.lua
+MagicActivity.lua
+MagicActivity.xml
