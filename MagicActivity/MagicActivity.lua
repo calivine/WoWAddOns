@@ -13,3 +13,9 @@ end
 
 MagicActivity:SetScript("OnLoad", MagicActivity_OnLoad);
 
+function MagicActivity:OnEvent(event, ...)
+
+end
+
+MagicActivity:SetScript("OnEvent", MagicActivity.OnEvent)
+
