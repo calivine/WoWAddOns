@@ -4,5 +4,4 @@
 ##
 
 MagicActivity.lua
-MagicActivity.lua
 MagicActivity.xml
