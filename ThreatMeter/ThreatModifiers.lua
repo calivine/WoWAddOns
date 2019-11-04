@@ -162,48 +162,60 @@ SPECIAL_ABILITIES = {
 
 TALENT_MODIFIERS = {
     WARRIOR = {
-        1 = {
+        [1] = {
             3,
             9,
             2
         }
     },
     MAGE = {
-        1 = {
+        [1] = {
             3,
             12,
             2
         },
-        2 = {
+        [2] = {
             1,
             1,
             2
         },
-        3 = {
+        [3] = {
             2,
             9,
             2
         }
     },
     DRUID = {
-        1 = {
+        [1] = {
             1,
             3,
             2
         },
-        2 = {
+        [2] = {
             2,
             8,
             2
         }
     },
     PALADIN = {
-        1 = {
+        [1] = {
             2,
             7,
             1
         }
     }
 
+}
+
+
+TALENT_THREAT_INFO = {
+    DEFIANCE = { percent = 3, school = 'Physical' },
+    ARCANE_SUBTLETY = { percent = 20, school = 'Arcane' },
+    FROST_CHANNELING = { percent = 10, school = 'Frost' },
+    BURNING_SOUL = { percent = 15, school = 'Fire' },
+    SILENT_RESOLVE = { percent = 8.33, school = 'All' },
+    SHADOW_AFFINITY = { percent = 4, school = 'Shadow' },
+    HEALING_GRACE = { percent = 5, school = 'Healing' },
+    IMPROVED_RIGHTEOUS_FURY = { percent = 10, school = 'Righteous Fury' }
 }
 

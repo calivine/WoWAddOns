@@ -37,6 +37,20 @@ local CLASS_DECORATORS = {
     PET = { r = 1, g = 1, b = 1 }
 }
 
+local TALENT_THREAT_INCREASE = {
+    WARRIOR = true,
+    PALADIN = true,
+    DRUID = true
+}
+
+local TALENT_THREAT_DECREASE = {
+    MAGE = true,
+    PRIEST = true,
+    SHAMAN = true
+}
+
+
+
 local PARTY_TARGET = nil;
 
 local PARTY_ROSTER = {};
@@ -84,7 +98,8 @@ function ThreatMeter:OnEvent(event, ...)
                 PARTY_ROSTER[guid].name = name;
                 PARTY_ROSTER[guid].class = class;
                 -- Need function that looks at class and talents and calculates any associated threat modifiers.
-                PARTY_ROSTER[guid].multiplier = 0;
+                PARTY_ROSTER[guid].multiplier = 1;
+                PARTY_ROSTER[guid].base = self:GetBaseThreat(class);
             end
         end
         if ( not self.in_combat ) then
@@ -125,7 +140,7 @@ function ThreatMeter:OnEvent(event, ...)
         end
 
         PARTY_TARGET = nil;
-        self.MOB_THREAT_TABLE = {};
+        -- self.MOB_THREAT_TABLE = {};
 
     elseif ( event == "PLAYER_LOGIN" ) then
         self:Initialize();
@@ -134,15 +149,13 @@ end
 
 function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, srcRaidFlags, destGUID, destName, destFlags, destRaidFlags, ...)
     if ( damageEvents[combatEvent] ) then
-        
-        -- local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 = ...;
         local arg2 = (select(2, ...));
-        -- print(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
-        
         local offset = combatEvent == "SWING_DAMAGE" and 1 or 4;
         local amount, overkill, school, resisted, blocked, absorbed = select(offset, ...);
+        school = GetSchoolString(school);
         
         PARTY_TARGET = destGUID;
+        
         -- Check if this is a pet, and if so map the pet's GUID to the party member's GUID using the mapping table
         --[[if self.pet_guids[srcGUID] then
             srcGUID = self.pet_guids[srcGUID];
@@ -161,16 +174,8 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
                     end
                 end
             end
-            local stance = GetShapeshiftForm();
-            if ( stance == 1 or stance == 3 ) then
-                amount = amount * 1.8;
-            else
-                local multiplier = 130 + PARTY_ROSTER[srcGUID].multiplier;
-                amount = amount * multiplier;
-            end
-            -- amount = amount * 2.3;
-        elseif PARTY_ROSTER[srcGUID].class == "Mage" then
-            amount = amount * 0.7;
+        else
+            amount = amount * 1; -- PARTY_ROSTER[srcGUID].multiplier;
         end
 
         -- Add threat amount to Mob's threat table
@@ -416,7 +421,9 @@ function ThreatMeter:Initialize()
         PARTY_ROSTER[self.player_guid].name = name;
         PARTY_ROSTER[self.player_guid].class = class;
         -- Need function that looks at class and talents and calculates any associated threat modifiers.
-        PARTY_ROSTER[self.player_guid].multiplier = self:GetTalentModifiers(self.player_guid) or 0;
+        PARTY_ROSTER[self.player_guid].multiplier = self:GetTalentModifiers(self.player_guid);
+        PARTY_ROSTER[self.player_guid].base = self:GetBaseThreat(class);
+        
     else
         
         for idx, unit in ipairs(units) do
@@ -428,6 +435,7 @@ function ThreatMeter:Initialize()
                 PARTY_ROSTER[guid].name = name;
                 PARTY_ROSTER[guid].class = class;
                 PARTY_ROSTER[guid].multiplier = 1;
+                PARTY_ROSTER[guid].base = self:GetBaseThreat(class);
             end
         end
     end
@@ -440,6 +448,7 @@ function ThreatMeter:Initialize()
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+    self:RegisterForDrag("LeftButton"); 
     
     self:CreateFrames();
     self:UpdateFrame();
@@ -497,11 +506,19 @@ function ThreatMeter:spairs(t, order)
 end
 
 function ThreatMeter:GetRank(rank)
-    return tonumber(string.sub(rank, -1, -1)) or 0;
+    if ( type(rank) == "string" ) then 
+        return tonumber(string.sub(rank, -1, -1));
+    else
+        return "0";
+    end
 end
 
-function ThreatMeter:FormatSpell(arg2)
-    return string.upper(string.gsub(arg2, " ", "_"));
+function ThreatMeter:FormatSpell(arg)
+    if ( type(arg) == "string" ) then 
+        return string.upper(string.gsub(arg, " ", "_"));
+    else
+        return "";
+    end
 end
 
 function ThreatMeter:IterateTables(tbl)
@@ -516,24 +533,58 @@ function ThreatMeter:IterateTables(tbl)
 end
 
 function ThreatMeter:GetTalentModifiers(guid)
-    local class = PARTY_ROSTER[guid].class;
-    print(TALENT_MODIFIERS[string.upper(class)][1].2);
+    local talent_threat_modifiers = {};
+    local talent_threat_modifier = 1;
+    local class = string.upper(PARTY_ROSTER[guid].class);
+
     
-    if ( class and class == "Warrior" ) then
-        -- Get info on Defiance talent
-        local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,9,2);
-        return selected * 3;
-        -- print(GetTalentInfo(3,9,2));
-    elseif ( class and class == "Mage" ) then
-        local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(3,12,2);
-        return selected * 10;
+    
+    -- Iterate through table of talent locations to see if unit has any selected talents for their class
+    -- If they do, get info about the talent modifiers using a talent info table indexed by talent name which 
+        -- contains info about the amount of threat modified and if it is an increase or decrease to the base. 
+    for index, value in pairs(TALENT_MODIFIERS[class]) do
+        if ( value ) then 
+            local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(value[1], value[2], value[3]);
+            name = self:FormatSpell(name);
+            if ( selected > 0 ) then
+                local points = TALENT_THREAT_INFO[name].percent * selected;
+                if ( TALENT_THREAT_INCREASE[class] ) then
+                    talent_threat_modifier = talent_threat_modifier * (1 + points / 100);
+                else
+                    talent_threat_modifier = talent_threat_modifier * (1 - points / 100);
+                end
+                talent_threat_modifiers[TALENT_THREAT_INFO[name].school] = talent_threat_modifier;
+                talent_threat_modifier = 1;
+            end
+        end
     end
+
+    return talent_threat_modifiers;
 end
 
 function ThreatMeter:TableLength(tbl)
     local count = 0;
     for _ in pairs(tbl) do count = count + 1 end
     return count;
+end
+
+function ThreatMeter:GetBaseThreat(class)
+    local base_threat = 1;
+    local stance = GetShapeshiftForm();
+    -- Get base threat of stance or form
+    if ( class == "Warrior" ) then
+        if ( stance == 1 or stance == 3 ) then
+            base_threat = 1.8;
+        else
+            base_threat = 2.3; 
+        end
+    elseif ( class == "Druid" ) then
+        print(stance);
+    elseif ( class == "Rogue" ) then
+        base_threat = 0.8;
+    end
+
+    return base_threat;
 end
 
 
