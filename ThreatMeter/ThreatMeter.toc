@@ -1,5 +1,5 @@
 ## Title: ThreatMeter (Classic)
-## Interface: 11302
+## Interface: 11304
 ## Notes: DPS and threat tracking for player and party.
 ##
 

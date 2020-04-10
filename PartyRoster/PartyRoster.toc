@@ -1,7 +1,7 @@
 ## Title: Party Roster (Classic)
 ## Notes: Display more information about your party including their targets
 ## 
-## Interface: 11302
+## Interface: 11304
 ##
 
 PartyRoster.lua

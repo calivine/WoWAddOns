@@ -85,15 +85,18 @@ function ThreatMeter:OnEvent(event, ...)
 
         self:ProcessEntry(CombatLogGetCurrentEventInfo());
     
+    -- Load New Party Member's Info into Party Roster
     elseif ( event == "GROUP_ROSTER_UPDATE" ) then
         print("GRP_ROSTER_UPDATE");
-        for i = 1, GetNumGroupMembers() do
+        local partySize = GetNumGroupMembers();
+        print(partySize);
+        for i = 1, partySize do
             local unit = "party" .. i;
             self:UpdatePets(unit);
             local guid = UnitGUID(unit);
             if ( guid ) then
-                local name, realm = UnitName(unit);
-                local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(guid);
+                -- local name, realm = UnitName(unit);
+                local class, class_file_name, race, race_file_name, sex, name = GetPlayerInfoByGUID(guid);
                 PARTY_ROSTER[guid] = {};
                 PARTY_ROSTER[guid].name = name;
                 PARTY_ROSTER[guid].class = class;
@@ -105,7 +108,7 @@ function ThreatMeter:OnEvent(event, ...)
         if ( not self.in_combat ) then
             self:UpdateFrame();
         end
-
+        print("Party Roster: ");
         self:IterateTables(PARTY_ROSTER);
         
 
@@ -113,6 +116,7 @@ function ThreatMeter:OnEvent(event, ...)
         local unit = ...;
         self:UpdatePets(unit);
 
+    -- Player / Party Enters Combat
     elseif ( event == "PLAYER_REGEN_DISABLED" ) then
         self.in_combat = true;
         self.combat_start = GetTime();
@@ -120,6 +124,7 @@ function ThreatMeter:OnEvent(event, ...)
         self:TakeSnapshot()
         self:SetScript("OnUpdate", self.OnUpdate);
 
+    -- Player / Party Leaves Combat
     elseif ( event == "PLAYER_REGEN_ENABLED" ) then
         self.in_combat = false;
         self.combat_time = self.combat_time + GetTime() - self.combat_start;
@@ -140,7 +145,7 @@ function ThreatMeter:OnEvent(event, ...)
         end
 
         PARTY_TARGET = nil;
-        -- self.MOB_THREAT_TABLE = {};
+        self.MOB_THREAT_TABLE = {};
 
     elseif ( event == "PLAYER_LOGIN" ) then
         self:Initialize();
@@ -150,6 +155,9 @@ end
 function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, srcName, srcFlags, srcRaidFlags, destGUID, destName, destFlags, destRaidFlags, ...)
     if ( damageEvents[combatEvent] ) then
         local arg2 = (select(2, ...));
+        if arg2 ~= -1 then
+            print('Spell Used: ', self:FormatSpell(arg2));
+        end
         local offset = combatEvent == "SWING_DAMAGE" and 1 or 4;
         local amount, overkill, school, resisted, blocked, absorbed = select(offset, ...);
         school = GetSchoolString(school);
@@ -167,14 +175,17 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
                 if rank ~= nil then
                     rank = self:GetRank(GetSpellSubtext(arg2));
                     arg2 = self:FormatSpell(arg2);
+                    -- If Unit used a special ability, find the value of the correct rank and add to amount
                     for action,v in pairs(SPECIAL_ABILITIES["WARRIOR"]) do
                         if ( action == arg2 ) then
+                            print('SPELL_DAMAGE + THREAT_MODIFIER', amount, ' + ', SPECIAL_ABILITIES["WARRIOR"][arg2][rank]);
                             amount = amount + SPECIAL_ABILITIES["WARRIOR"][arg2][rank];
                         end  
                     end
                 end
             end
         else
+            print(PARTY_ROSTER[srcGUID].multiplier);
             amount = amount * 1; -- PARTY_ROSTER[srcGUID].multiplier;
         end
 
@@ -206,7 +217,7 @@ function ThreatMeter:ProcessEntry(timestamp, combatEvent, hideCaster, srcGUID, s
             
             for k,v in pairs(self.MOB_THREAT_TABLE) do
                 for guid,value in pairs(v) do
-                    print(value);
+                    print('Healing Event Value: ', value);
                     if ( self.MOB_THREAT_TABLE[k][srcGUID] == nil ) then
                         self.MOB_THREAT_TABLE[k][srcGUID] = healing_threat;
                     else
@@ -364,7 +375,28 @@ function ThreatMeter:UpdateFrame(elapsed)
             end
             
             row:SetTextColor(CLASS_DECORATORS[class].r, CLASS_DECORATORS[class].g, CLASS_DECORATORS[class].b);
-            row:SetFormattedText("%d. %s: %s", i, PARTY_ROSTER[guid].name, v);
+            row:SetFormattedText("%d. %s:   %s", i, PARTY_ROSTER[guid].name, v);
+            row:Show();
+            
+        end
+
+    else
+        local THREAT_DISPLAY = {};
+        display_target:SetFormattedText("Targeting: ");
+        for guid,v in self:spairs(THREAT_DISPLAY, function(t,a,b) return t[b] < t[a] end) do
+            i = i + 1;
+            local row = self.rows[i];
+            
+            -- Get the unit's class and corresponding text color.
+            local class = PARTY_ROSTER[guid].class; 
+            if ( class ) then
+                class = string.upper(class);
+            else
+                class = "PET";
+            end
+            
+            row:SetTextColor(CLASS_DECORATORS[class].r, CLASS_DECORATORS[class].g, CLASS_DECORATORS[class].b);
+            row:SetFormattedText("%d. %s:   %s", i, PARTY_ROSTER[guid].name, v);
             row:Show();
             
         end
@@ -415,8 +447,9 @@ function ThreatMeter:Initialize()
     if ( GetNumGroupMembers() == 0 ) then
         
         self.player_guid = UnitGUID("player");
-        local name, realm = UnitName("player");
-        local class, class_file_name, race, race_file_name, sex = GetPlayerInfoByGUID(self.player_guid);
+        -- local name, realm = UnitName("player");
+        local class, class_file_name, race, race_file_name, sex, name = GetPlayerInfoByGUID(self.player_guid);
+        print(class, race, self:Gender(sex), name);
         PARTY_ROSTER[self.player_guid] = {};
         PARTY_ROSTER[self.player_guid].name = name;
         PARTY_ROSTER[self.player_guid].class = class;
@@ -439,7 +472,7 @@ function ThreatMeter:Initialize()
             end
         end
     end
-    self:IterateTables(PARTY_ROSTER);
+    -- self:IterateTables(PARTY_ROSTER);
     
     self:RegisterEvent("GROUP_ROSTER_UPDATE");
     self:RegisterEvent("UNIT_PET");
@@ -448,6 +481,7 @@ function ThreatMeter:Initialize()
     self:RegisterEvent("PLAYER_REGEN_DISABLED");
     self:RegisterEvent("PLAYER_REGEN_ENABLED");
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+    self:RegisterEvent("MERCHANT_SHOW");
     self:RegisterForDrag("LeftButton"); 
     
     self:CreateFrames();
@@ -467,6 +501,7 @@ end
         spairs
         GetRank
         IterateTables
+        Gender
         
 ------------------------------------------------------------------------------------------]]
 
@@ -542,8 +577,10 @@ function ThreatMeter:GetTalentModifiers(guid)
     -- Iterate through table of talent locations to see if unit has any selected talents for their class
     -- If they do, get info about the talent modifiers using a talent info table indexed by talent name which 
         -- contains info about the amount of threat modified and if it is an increase or decrease to the base. 
-    for index, value in pairs(TALENT_MODIFIERS[class]) do
-        if ( value ) then 
+        print("Talent Info: ");
+        for index, value in pairs(TALENT_MODIFIERS[class]) do
+        if ( value ) then
+            print(GetTalentInfo(value[1], value[2], value[3])); 
             local name, talentID, tier, col, selected, available, arg1, arg2 = GetTalentInfo(value[1], value[2], value[3]);
             name = self:FormatSpell(name);
             if ( selected > 0 ) then
@@ -568,9 +605,11 @@ function ThreatMeter:TableLength(tbl)
     return count;
 end
 
+-- Returns the base threat for classes with modfied base threats i.e. Warrior, Druid, Rogue
 function ThreatMeter:GetBaseThreat(class)
     local base_threat = 1;
     local stance = GetShapeshiftForm();
+    print('GetShapeshiftForm: ', GetShapeshiftForm());
     -- Get base threat of stance or form
     if ( class == "Warrior" ) then
         if ( stance == 1 or stance == 3 ) then
@@ -579,7 +618,7 @@ function ThreatMeter:GetBaseThreat(class)
             base_threat = 2.3; 
         end
     elseif ( class == "Druid" ) then
-        print(stance);
+        print('Stance: ', stance);
     elseif ( class == "Rogue" ) then
         base_threat = 0.8;
     end
@@ -588,4 +627,17 @@ function ThreatMeter:GetBaseThreat(class)
 end
 
 
-    
+-- Fetch the gender from integer value
+function ThreatMeter:Gender(id)
+    if id < 1 or id > 3 then
+        return "NA";
+    end
+    if id == 2 then
+        return "Male";
+    elseif id == 3 then
+        return "Female"
+    else
+        return "Unknown";
+    end
+end
+   

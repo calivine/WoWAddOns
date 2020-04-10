@@ -1,0 +1,7 @@
+## Title: JunkMaster (Classic)
+## Interface: 11304
+## Notes: Auto sell junk to merchants
+##
+
+JunkMaster.lua
+JunkMaster.xml

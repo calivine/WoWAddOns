@@ -30,6 +30,16 @@ ADV_COMBAT_TEXT_TYPE_INFO["COOLDOWN"] = {r = 0.1, g = 0.1, b = 1, var = "COMBAT_
 function AdvancedCombatText_OnLoad(self)
     AdvancedCombatText_UpdateDisplayedMessages();
     AdvancedCombatText.xDir = 1;
+    for i=1, 120 do
+        local spellID = (select(2, GetActionInfo(i)));
+        print(GetActionInfo(i))
+        if (spellID ~= nil) then
+            print(GetSpellInfo(spellID));
+        end
+        local maxRange = (select(6, GetSpellInfo(spellID)));
+    end
+    
+    
 end
 
 function AdvancedCombatText_OnEvent(self, event, ...)
@@ -250,6 +260,7 @@ function AdvancedCombatText_UpdateDisplayedMessages()
 
     -- Clear Animations
     AdvancedCombatText_ClearAnimationList();
+
 end
 
 function AdvancedCombatText_StandardScroll(value)
@@ -283,27 +294,6 @@ function AdvancedCombatText_SheepTarget(value)
         end
         -- print("Casting "..format("%s",name).." on "..format("%s",target));
         SetRaidTarget("target",5);
-    end
-end
-
-function AdvancedCombatText_PullSpellInfo(actionNum, ret)
-    local actionType, id, subType = GetActionInfo(actionNum);
-    local name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(id);
-    if ret == "all" then
-        return name, rank, icon, castTime, minRange, maxRange, spellId;
-    elseif ret == "name" then
-        return name;
-    elseif ret == "rank" then
-        return rank;
-    elseif ret == "icon" then
-        return icon;
-    elseif ret == "castTime" then
-        return castTime;
-    elseif ret == "spellId" then
-        return spellId;
-    else
-        print("Second argument must be variable from 'GetSpellInfo' payload");
-        return nil;
     end
 end
 

@@ -1,7 +1,7 @@
 ## Title: Advanced Combat Text (Classic)
 ## Notes: Advanced combat UI and spellcast assistant to alert your party of incoming spells. 
 ## 
-## Interface: 11302
+## Interface: 11304
 ##
 
 AdvancedCombatText.lua

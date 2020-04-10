@@ -1,5 +1,5 @@
 ## Title: MagicActivity (Classic)
-## Interface: 11302
+## Interface: 11304
 ## Notes: Player kill tracker with advanced display options.
 ##
 

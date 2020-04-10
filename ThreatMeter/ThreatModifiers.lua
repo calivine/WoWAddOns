@@ -1,3 +1,8 @@
+-- Special Abilities Threat Table
+-- Class 
+--  ABILITY 
+--      RANK
+
 SPECIAL_ABILITIES = {
     WARRIOR = {
         BATTLE_SHOUT = {
@@ -160,6 +165,8 @@ SPECIAL_ABILITIES = {
     }
 }
 
+-- Stores the Indexes of threat-modifying talents in the respective talent trees. 
+-- Retrieve the indexes and use with GetTalentInfo()
 TALENT_MODIFIERS = {
     WARRIOR = {
         [1] = {

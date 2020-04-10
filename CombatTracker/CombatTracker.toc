@@ -1,5 +1,5 @@
 ## Title: CombatTracker (Classic)
-## Interface: 11302
+## Interface: 11304
 ## Notes: Basic DPS tracking
 ##
 
