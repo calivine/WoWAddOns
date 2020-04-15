@@ -1,8 +1,7 @@
-
-TEXT_DISPLAY_X_OFFSET = -247;
-TEXT_DISPLAY_Y_OFFSET = -7;
-TEXT_DISPAY_HEIGHT = 50;
-TEXT_DISPLAY_WIDTH = 50;
+local TEXT_DISPLAY_X_OFFSET = -247;
+local TEXT_DISPLAY_Y_OFFSET = -7;
+local TEXT_DISPAY_HEIGHT = 50;
+local TEXT_DISPLAY_WIDTH = 50;
 
 
 local JM = CreateFrame("Frame", "JM", UIParent);
@@ -19,7 +18,10 @@ JM_Texture:SetHeight(TEXT_DISPAY_HEIGHT);
 JM_Texture:SetWidth(TEXT_DISPLAY_WIDTH);
 
 function JM:OnEvent(event, ...)
-    if ( event == "PLAYER_LOGIN" ) then
+    if ( event == "BAG_UPDATE" ) then
+        local remaining = self:SlotsRemaining();
+        remainingSlotsText:SetFormattedText("%d", remaining);    
+    elseif ( event == "PLAYER_LOGIN" ) then
         self:Initialize();
     elseif ( event == "MERCHANT_SHOW" ) then
         self:SellJunk();
