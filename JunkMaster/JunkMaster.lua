@@ -2,7 +2,7 @@ local TEXT_DISPLAY_X_OFFSET = -247;
 local TEXT_DISPLAY_Y_OFFSET = -7;
 local TEXT_DISPAY_HEIGHT = 50;
 local TEXT_DISPLAY_WIDTH = 50;
-
+local TEXT_DISPLAY_FONT = "NumberFont_OutlineThick_Mono_Small";
 
 local JM = CreateFrame("Frame", "JM", UIParent);
 JM:SetFrameStrata("HIGH");
@@ -48,7 +48,7 @@ end
 
 function JM:CreateFrame()
     local remaining = self:SlotsRemaining();
-    remainingSlotsText = self:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+    remainingSlotsText = self:CreateFontString(nil, "OVERLAY", TEXT_DISPLAY_FONT);
     remainingSlotsText:SetTextColor(1,1,1,1);
     remainingSlotsText:SetFormattedText("%d", remaining);
     remainingSlotsText:SetPoint("CENTER", TEXT_DISPLAY_X_OFFSET, TEXT_DISPLAY_Y_OFFSET);
